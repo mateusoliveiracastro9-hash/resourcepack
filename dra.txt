@@ -17,10 +17,12 @@ _G.WalkSpeedValue = 16
 _G.JumpPowerValue = 50
 _G.AimbotEnabled = false
 _G.AimbotSmoothness = 0.05
+_G.ESPEnabled = false
 
 local States = {Fly = false, Flinging = false, InfiniteFling = false, Minimized = false}
 local InfiniteFlingTarget = nil
 local InfiniteFlingThread = nil
+local ESPTable = {}
 
 -- UI PRINCIPAL
 local ScreenGui = Instance.new("ScreenGui", PlayerGui)
@@ -146,7 +148,7 @@ local function CreateList(name, color, order, btnText)
     return holder, mainBtn
 end
 
--- 1. SEÇÃO DE MOVIMENTAÇÃO E BARRAS (NOVA)
+-- 1. SEÇÃO DE MOVIMENTAÇÃO
 local BasicH, BasicBtn = CreateList("BASICS", Color3.fromRGB(40, 40, 40), 1, "⚙️ BASICS & MOVEMENT")
 
 NewButton("🚀 FLY MODE", Color3.fromRGB(60, 60, 60), 1, function(self)
@@ -163,7 +165,6 @@ NewButton("🚀 FLY MODE", Color3.fromRGB(60, 60, 60), 1, function(self)
 end).Parent = BasicH
 
 NewSlider("⚡ FLY SPEED", 10, 500, _G.FlySpeed, 2, function(v) _G.FlySpeed = v end, BasicH)
-NewSlider("🔥 FLING FORCE", 100000, 5000000, _G.FlingForce, 3, function(v) _G.FlingForce = v end, BasicH)
 NewSlider("👟 WALK SPEED", 16, 350, 16, 4, function(v) _G.WalkSpeedValue = v end, BasicH)
 NewSlider("⏫ JUMP POWER", 50, 500, 50, 5, function(v) _G.JumpPowerValue = v end, BasicH)
 
@@ -179,19 +180,40 @@ NewSlider("SMOOTHNESS (IMÃ)", 1, 10, 5, 2, function(v)
     _G.AimbotSmoothness = v / 100
 end, AimH)
 
--- 3. OUTRAS LISTAS
+-- 3. SEÇÃO ESP (NOVA)
+local VisualH, VisualBtn = CreateList("VISUAL", Color3.fromRGB(0, 180, 100), 8, "👁️ VISUAL & ESP")
+local EspTgl = NewButton("ENABLE ESP BOX", Color3.fromRGB(40, 40, 40), 1, function(self)
+    _G.ESPEnabled = not _G.ESPEnabled
+    self.BackgroundColor3 = _G.ESPEnabled and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(40, 40, 40)
+end)
+EspTgl.Parent = VisualH; EspTgl.Size = UDim2.new(1, -40, 0, 35)
+
+-- 4. OUTRAS LISTAS
 local InfH = CreateList("INF FLING", Color3.fromRGB(120, 0, 180), 10, "♾️ INFINITE FLING LIST")
 local TPH = CreateList("TP", Color3.fromRGB(0, 120, 220), 12, "📍 TELEPORT LIST")
 
--- 4. BOTÃO DE PARAR
-NewButton("❌ STOP ALL FLINGS", Color3.fromRGB(150, 0, 0), 30, function() 
-    States.InfiniteFling = false
-    InfiniteFlingTarget = nil
-    if InfiniteFlingThread then task.cancel(InfiniteFlingThread); InfiniteFlingThread = nil end
-    States.Flinging = false
-end)
+-- LÓGICA ESP
+local function CreateESP(p)
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "ESP_" .. p.Name
+    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+    
+    local function Update()
+        if _G.ESPEnabled and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            highlight.Adornee = p.Character
+            highlight.Parent = ScreenGui
+        else
+            highlight.Adornee = nil
+            highlight.Parent = nil
+        end
+    end
+    RunService.RenderStepped:Connect(Update)
+end
 
--- LÓGICA DE EXECUÇÃO E REFRESH
+-- LÓGICA DE FLING E AUXILIARES
 local function GetClosestPlayer()
     local closest, shortestDist = nil, math.huge
     local mousePos = UserInputService:GetMouseLocation()
@@ -233,9 +255,11 @@ local function Refresh()
         if p ~= Player then
             local inf = NewButton(p.DisplayName, Color3.fromRGB(100, 0, 160), 1, function()
                 States.InfiniteFling = true; InfiniteFlingTarget = p
+                if InfiniteFlingThread then task.cancel(InfiniteFlingThread) end
                 InfiniteFlingThread = task.spawn(function() while InfiniteFlingTarget == p do ExecuteFling(p); task.wait(0.1) end end)
             end)
             inf.Parent = InfH; inf.Size = UDim2.new(1, -40, 0, 35)
+            
             local tp = NewButton("TP: "..p.DisplayName, Color3.fromRGB(25, 90, 170), 1, function()
                 if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                     Player.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
@@ -246,19 +270,26 @@ local function Refresh()
     end
 end
 
+-- LOOPS DE ATUALIZAÇÃO
 RunService.RenderStepped:Connect(function()
     local hum = Player.Character and Player.Character:FindFirstChild("Humanoid")
-    if hum then hum.WalkSpeed = _G.WalkSpeedValue; hum.JumpPower = _G.JumpPowerValue; hum.UseJumpPower = true end
+    if hum then 
+        hum.WalkSpeed = _G.WalkSpeedValue 
+        hum.JumpPower = _G.JumpPowerValue 
+        hum.UseJumpPower = true 
+    end
+    
     local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
     if States.Fly and hrp and hrp:FindFirstChild("FlyVel") then
         hrp.FlyGyro.CFrame = Camera.CFrame
-        local dir = Vector3.new(0,0,0)
+        local dir = Vector3.zero
         if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir += Vector3.new(0,0,-1) end
         if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir += Vector3.new(0,0,1) end
         if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir += Vector3.new(-1,0,0) end
         if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir += Vector3.new(1,0,0) end
         hrp.FlyVel.Velocity = Camera.CFrame:VectorToWorldSpace(dir * _G.FlySpeed)
     end
+    
     if _G.AimbotEnabled and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
         local target = GetClosestPlayer()
         if target and target.Character and target.Character:FindFirstChild("Head") then
@@ -267,5 +298,12 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-Players.PlayerAdded:Connect(Refresh); Players.PlayerRemoving:Connect(Refresh); Refresh()
-UserInputService.InputBegan:Connect(function(i, g) if not g and i.KeyCode == Enum.KeyCode.K then Main.Visible = not Main.Visible end end)
+-- INICIALIZAÇÃO
+for _, p in pairs(Players:GetPlayers()) do if p ~= Player then CreateESP(p) end end
+Players.PlayerAdded:Connect(function(p) CreateESP(p); Refresh() end)
+Players.PlayerRemoving:Connect(Refresh)
+Refresh()
+
+UserInputService.InputBegan:Connect(function(i, g) 
+    if not g and i.KeyCode == Enum.KeyCode.K then Main.Visible = not Main.Visible end 
+end)
