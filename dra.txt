@@ -181,15 +181,28 @@ NewButton("ENABLE ESP BOX", Color3.fromRGB(40, 40, 40), 1, function(self)
 end, VisualH)
 
 -- 4. INF FLING & TP
-local InfH = CreateList("INF FLING", Color3.fromRGB(120, 0, 180), 10, "♾️ INFINITE FLING LIST")
-local TPH = CreateList("TP", Color3.fromRGB(0, 120, 220), 12, "📍 TELEPORT LIST")
+local InfH, InfMainBtn = CreateList("INF FLING", Color3.fromRGB(120, 0, 180), 10, "♾️ INFINITE FLING LIST")
+local TPH, TPMainBtn = CreateList("TP", Color3.fromRGB(0, 120, 220), 12, "📍 TELEPORT LIST")
 
--- BOTÃO PARAR TUDO (Sempre visível no fim da lista INF FLING)
-local StopFlingBtn = NewButton("🛑 STOP INFINITE FLING", Color3.fromRGB(255, 0, 0), 999, function()
+-- ==========================================
+-- BOTÃO PARAR TUDO (ADICIONADO)
+-- ==========================================
+local StopFlingBtn = NewButton("🛑 STOP ALL FLINGS", Color3.fromRGB(255, 0, 0), 0, function()
     States.InfiniteFling = false
-    InfiniteFlingTarget = nil
-    if InfiniteFlingThread then task.cancel(InfiniteFlingThread); InfiniteFlingThread = nil end
     States.Flinging = false
+    InfiniteFlingTarget = nil
+    if InfiniteFlingThread then 
+        task.cancel(InfiniteFlingThread) 
+        InfiniteFlingThread = nil 
+    end
+    -- Reseta velocidade e limpa BodyObjects do jogador
+    local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        for _, v in pairs(hrp:GetChildren()) do
+            if v:IsA("BodyAngularVelocity") or v.Name == "FlingVel" then v:Destroy() end
+        end
+    end
 end, InfH)
 
 -- LÓGICA ESP
@@ -208,25 +221,37 @@ local function CreateESP(p)
     RunService.RenderStepped:Connect(Update)
 end
 
--- LÓGICA DE FLING
+-- LÓGICA DE FLING MELHORADA
 local function ExecuteFling(target)
-    if States.Flinging or not target.Character then return end
+    if not target.Character or not States.InfiniteFling then return end
     local char = Player.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     local tHRP = target.Character:FindFirstChild("HumanoidRootPart")
     if not hrp or not tHRP then return end
+    
     States.Flinging = true
     local noclip = RunService.Stepped:Connect(function()
         for _, v in pairs(char:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
     end)
+    
     local bav = Instance.new("BodyAngularVelocity", hrp)
-    bav.AngularVelocity = Vector3.new(0, _G.FlingForce/10, 0); bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    bav.Name = "FlingVel"
+    bav.AngularVelocity = Vector3.new(0, _G.FlingForce, 0)
+    bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    
     local start = tick()
-    while tick() - start < 0.5 and States.Flinging and States.InfiniteFling do
-        if tHRP then hrp.CFrame = tHRP.CFrame * CFrame.Angles(0, math.rad(tick()*720), 0) end
+    while tick() - start < 1 and States.InfiniteFling and States.Flinging do
+        if tHRP and hrp then 
+            hrp.CFrame = tHRP.CFrame * CFrame.Angles(0, math.rad(tick()*720), 0) 
+            hrp.AssemblyLinearVelocity = Vector3.new(0, 50, 0) -- Força extra
+        end
         task.wait()
     end
-    bav:Destroy(); noclip:Disconnect(); hrp.AssemblyLinearVelocity = Vector3.zero; States.Flinging = false
+    
+    bav:Destroy()
+    noclip:Disconnect()
+    if hrp then hrp.AssemblyLinearVelocity = Vector3.zero end
+    States.Flinging = false
 end
 
 local function Refresh()
@@ -237,17 +262,27 @@ local function Refresh()
     end
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= Player then
-            NewButton(p.DisplayName, Color3.fromRGB(100, 0, 160), 1, function()
-                States.InfiniteFling = true; InfiniteFlingTarget = p
+            -- Botão de Infinite Fling Individual
+            local pBtn = NewButton(p.DisplayName, Color3.fromRGB(100, 0, 160), 1, function()
+                States.InfiniteFling = true
+                InfiniteFlingTarget = p
                 if InfiniteFlingThread then task.cancel(InfiniteFlingThread) end
-                InfiniteFlingThread = task.spawn(function() while InfiniteFlingTarget == p do ExecuteFling(p); task.wait(0.1) end end)
-            end, InfH).Size = UDim2.new(1, -40, 0, 35)
+                InfiniteFlingThread = task.spawn(function() 
+                    while InfiniteFlingTarget == p and States.InfiniteFling do 
+                        ExecuteFling(p)
+                        task.wait(0.05) 
+                    end 
+                end)
+            end, InfH)
+            pBtn.Size = UDim2.new(1, -40, 0, 35)
             
-            NewButton("TP: "..p.DisplayName, Color3.fromRGB(25, 90, 170), 1, function()
+            -- Botão de Teleporte
+            local tpBtn = NewButton("TP: "..p.DisplayName, Color3.fromRGB(25, 90, 170), 1, function()
                 if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                     Player.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
                 end
-            end, TPH).Size = UDim2.new(1, -40, 0, 35)
+            end, TPH)
+            tpBtn.Size = UDim2.new(1, -40, 0, 35)
         end
     end
 end
