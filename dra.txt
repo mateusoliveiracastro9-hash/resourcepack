@@ -1,4 +1,5 @@
 repeat task.wait() until game:IsLoaded()
+
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
@@ -12,7 +13,6 @@ for _, oldGui in pairs(PlayerGui:GetChildren()) do if oldGui.Name:match("BigHub"
 
 -- Configurações Iniciais
 _G.FlySpeed = 50
-_G.FlingForce = 1500000
 _G.WalkSpeedValue = 16
 _G.JumpPowerValue = 50
 _G.AimbotEnabled = false
@@ -21,29 +21,44 @@ _G.ESPEnabled = false
 
 local States = {Fly = false, Flinging = false, InfiniteFling = false, Minimized = false}
 local InfiniteFlingTarget = nil
-local InfiniteFlingThread = nil
+
+-- Função para parar o Fling e resetar forças
+local function StopFling()
+    States.InfiniteFling = false
+    InfiniteFlingTarget = nil
+    local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        if hrp:FindFirstChild("FlingSpin") then hrp.FlingSpin:Destroy() end
+        hrp.AssemblyLinearVelocity = Vector3.new(0,0,0)
+        hrp.AssemblyAngularVelocity = Vector3.new(0,0,0)
+    end
+end
 
 -- UI PRINCIPAL
 local ScreenGui = Instance.new("ScreenGui", PlayerGui)
-ScreenGui.Name = "BigHub_V9_1"
+ScreenGui.Name = "BigHub_V9_Final_Fixed"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 9999
 
 local Main = Instance.new("Frame", ScreenGui)
 Main.Size = UDim2.new(0, 320, 0, 550)
 Main.Position = UDim2.new(0.5, -160, 0.2, 0)
-Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Main.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 Main.Active = true
-Main.ClipsDescendants = true
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
+
+local MainStroke = Instance.new("UIStroke", Main)
+MainStroke.Color = Color3.fromRGB(255, 0, 0)
+MainStroke.Thickness = 2.5
+MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
 local Title = Instance.new("TextButton", Main)
 Title.Size = UDim2.new(1, 0, 0, 50)
-Title.Text = "😈 BIG HUB V9.1"
-Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Title.TextColor3 = Color3.new(1, 1, 1)
+Title.Text = "😈 BIG HUB V9.1 - RED EDITION"
+Title.BackgroundColor3 = Color3.fromRGB(20, 0, 0)
+Title.TextColor3 = Color3.fromRGB(255, 0, 0)
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 18
+Title.TextSize = 16
 Title.AutoButtonColor = false
 Instance.new("UICorner", Title).CornerRadius = UDim.new(0, 10)
 
@@ -69,17 +84,15 @@ UserInputService.InputChanged:Connect(function(input)
         Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end
-end)
+UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
 
 local Container = Instance.new("ScrollingFrame", Main)
 Container.Size = UDim2.new(1, 0, 1, -60)
 Container.Position = UDim2.new(0, 0, 0, 55)
 Container.BackgroundTransparency = 1
-Container.CanvasSize = UDim2.new(0, 0, 0, 0)
 Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
-Container.ScrollBarThickness = 4
+Container.ScrollBarThickness = 2
+Container.ScrollBarImageColor3 = Color3.fromRGB(255, 0, 0)
 
 local Layout = Instance.new("UIListLayout", Container)
 Layout.Padding = UDim.new(0, 12)
@@ -95,16 +108,11 @@ MinimizeBtn.MouseButton1Click:Connect(function()
     TweenService:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = targetSize}):Play()
 end)
 
--- CONSTRUTORES
+-- CONSTRUTORES DE UI
 local function NewButton(text, color, order, callback, parent)
     local btn = Instance.new("TextButton", parent or Container)
-    btn.Size = UDim2.new(1, -30, 0, 45)
-    btn.BackgroundColor3 = color
-    btn.TextColor3 = Color3.new(1, 1, 1)
-    btn.Text = text
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 14
-    btn.LayoutOrder = order
+    btn.Size = UDim2.new(1, -30, 0, 45); btn.BackgroundColor3 = color; btn.TextColor3 = Color3.new(1, 1, 1); btn.Text = text
+    btn.Font = Enum.Font.GothamBold; btn.TextSize = 14; btn.LayoutOrder = order
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
     btn.MouseButton1Click:Connect(function() callback(btn) end)
     return btn
@@ -114,12 +122,11 @@ local function NewSlider(name, min, max, default, order, callback, parent)
     local frame = Instance.new("Frame", parent or Container)
     frame.Size = UDim2.new(1, -30, 0, 75); frame.BackgroundTransparency = 1; frame.LayoutOrder = order
     local lab = Instance.new("TextLabel", frame)
-    lab.Size = UDim2.new(1, 0, 0, 25); lab.Text = name .. ": " .. default; lab.TextColor3 = Color3.new(1,1,1); lab.BackgroundTransparency = 1; lab.Font = Enum.Font.GothamBold; lab.TextSize = 14; lab.TextXAlignment = Enum.TextXAlignment.Left
+    lab.Size = UDim2.new(1, 0, 0, 25); lab.Text = name .. ": " .. default; lab.TextColor3 = Color3.new(1,1,1); lab.BackgroundTransparency = 1; lab.Font = Enum.Font.GothamBold; lab.TextSize = 14
     local back = Instance.new("Frame", frame)
-    back.Size = UDim2.new(1, 0, 0, 12); back.Position = UDim2.new(0, 0, 0, 35); back.BackgroundColor3 = Color3.fromRGB(45, 45, 45); Instance.new("UICorner", back)
+    back.Size = UDim2.new(1, 0, 0, 12); back.Position = UDim2.new(0, 0, 0, 35); back.BackgroundColor3 = Color3.fromRGB(30, 30, 30); Instance.new("UICorner", back)
     local fill = Instance.new("Frame", back)
-    fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0); fill.BackgroundColor3 = Color3.fromRGB(0, 170, 255); Instance.new("UICorner", fill)
-    
+    fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0); fill.BackgroundColor3 = Color3.fromRGB(255, 0, 0); Instance.new("UICorner", fill)
     local sliding = false
     local function Upd()
         local mousePos = UserInputService:GetMouseLocation().X
@@ -129,29 +136,31 @@ local function NewSlider(name, min, max, default, order, callback, parent)
         lab.Text = name .. ": " .. val; callback(val)
     end
     back.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then sliding = true; Upd() end end)
+    UserInutService = game:GetService("UserInputService")
     UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then sliding = false end end)
     RunService.RenderStepped:Connect(function() if sliding then Upd() end end)
     return frame
 end
 
 local function CreateList(name, color, order, btnText)
+    local mainBtn = NewButton(btnText, color, order, function() end)
     local holder = Instance.new("Frame", Container)
     holder.Size = UDim2.new(1, 0, 0, 0); holder.BackgroundTransparency = 1; holder.ClipsDescendants = true; holder.LayoutOrder = order + 1
-    local layout = Instance.new("UIListLayout", holder); layout.Padding = UDim.new(0, 8); layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-    local mainBtn = NewButton(btnText, color, order, function(self)
+    local lyt = Instance.new("UIListLayout", holder); lyt.Padding = UDim.new(0, 8); lyt.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    mainBtn.MouseButton1Click:Connect(function()
         local isOpen = holder.Size.Y.Offset > 0
-        local targetSize = isOpen and 0 or layout.AbsoluteContentSize.Y
-        self.Text = isOpen and btnText or "❌ CLOSE " .. name
+        local targetSize = isOpen and 0 or lyt.AbsoluteContentSize.Y
+        mainBtn.Text = isOpen and btnText or "❌ CLOSE " .. name
         TweenService:Create(holder, TweenInfo.new(0.3), {Size = UDim2.new(1, 0, 0, targetSize)}):Play()
     end)
     return holder, mainBtn
 end
 
--- 1. MOVIMENTAÇÃO
-local BasicH, BasicBtn = CreateList("BASICS", Color3.fromRGB(40, 40, 40), 1, "⚙️ BASICS & MOVEMENT")
-NewButton("🚀 FLY MODE", Color3.fromRGB(60, 60, 60), 1, function(self)
+-- SEÇÕES
+local BasicH, _ = CreateList("BASICS", Color3.fromRGB(30, 0, 0), 10, "⚙️ BASICS & MOVEMENT")
+NewButton("🚀 FLY MODE", Color3.fromRGB(50, 0, 0), 1, function(self)
     States.Fly = not States.Fly
-    self.BackgroundColor3 = States.Fly and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(60, 60, 60)
+    self.BackgroundColor3 = States.Fly and Color3.fromRGB(150, 0, 0) or Color3.fromRGB(50, 0, 0)
     local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
     if States.Fly and hrp then
         local bg = Instance.new("BodyGyro", hrp); bg.Name = "FlyGyro"; bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9); bg.P = 9e4
@@ -162,135 +171,119 @@ NewButton("🚀 FLY MODE", Color3.fromRGB(60, 60, 60), 1, function(self)
     end
 end, BasicH)
 NewSlider("⚡ FLY SPEED", 10, 500, _G.FlySpeed, 2, function(v) _G.FlySpeed = v end, BasicH)
-NewSlider("👟 WALK SPEED", 16, 350, 16, 4, function(v) _G.WalkSpeedValue = v end, BasicH)
-NewSlider("⏫ JUMP POWER", 50, 500, 50, 5, function(v) _G.JumpPowerValue = v end, BasicH)
+NewSlider("👟 WALK SPEED", 16, 350, _G.WalkSpeedValue, 3, function(v) _G.WalkSpeedValue = v end, BasicH)
+NewSlider("⏫ JUMP POWER", 50, 500, _G.JumpPowerValue, 4, function(v) _G.JumpPowerValue = v end, BasicH)
 
--- 2. AIMBOT
-local AimH, AimMainBtn = CreateList("AIMBOT", Color3.fromRGB(200, 50, 50), 6, "🎯 AIMBOT SETTINGS")
-NewButton("ENABLE AIMBOT", Color3.fromRGB(60, 20, 20), 1, function(self)
+local AimH, _ = CreateList("AIMBOT", Color3.fromRGB(100, 0, 0), 20, "🎯 AIMBOT SETTINGS")
+NewButton("ENABLE AIMBOT", Color3.fromRGB(50, 0, 0), 1, function(self)
     _G.AimbotEnabled = not _G.AimbotEnabled
-    self.BackgroundColor3 = _G.AimbotEnabled and Color3.fromRGB(200, 0, 0) or Color3.fromRGB(60, 20, 20)
+    self.BackgroundColor3 = _G.AimbotEnabled and Color3.fromRGB(200, 0, 0) or Color3.fromRGB(50, 0, 0)
 end, AimH)
 NewSlider("SMOOTHNESS", 1, 10, 5, 2, function(v) _G.AimbotSmoothness = v / 100 end, AimH)
 
--- 3. VISUAL (ESP)
-local VisualH, VisualBtn = CreateList("VISUAL", Color3.fromRGB(0, 180, 100), 8, "👁️ VISUAL & ESP")
-NewButton("ENABLE ESP BOX", Color3.fromRGB(40, 40, 40), 1, function(self)
+local VisualH, _ = CreateList("VISUAL", Color3.fromRGB(150, 0, 0), 30, "👁️ VISUAL & ESP")
+NewButton("ENABLE HYBRID ESP", Color3.fromRGB(50, 0, 0), 1, function(self)
     _G.ESPEnabled = not _G.ESPEnabled
-    self.BackgroundColor3 = _G.ESPEnabled and Color3.fromRGB(0, 180, 0) or Color3.fromRGB(40, 40, 40)
+    self.BackgroundColor3 = _G.ESPEnabled and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(50, 0, 0)
 end, VisualH)
 
--- 4. INF FLING & TP
-local InfH, InfMainBtn = CreateList("INF FLING", Color3.fromRGB(120, 0, 180), 10, "♾️ INFINITE FLING LIST")
-local TPH, TPMainBtn = CreateList("TP", Color3.fromRGB(0, 120, 220), 12, "📍 TELEPORT LIST")
-
--- ==========================================
--- BOTÃO PARAR TUDO (ADICIONADO)
--- ==========================================
-local StopFlingBtn = NewButton("🛑 STOP ALL FLINGS", Color3.fromRGB(255, 0, 0), 0, function()
-    States.InfiniteFling = false
-    States.Flinging = false
-    InfiniteFlingTarget = nil
-    if InfiniteFlingThread then 
-        task.cancel(InfiniteFlingThread) 
-        InfiniteFlingThread = nil 
-    end
-    -- Reseta velocidade e limpa BodyObjects do jogador
-    local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        hrp.AssemblyLinearVelocity = Vector3.zero
-        for _, v in pairs(hrp:GetChildren()) do
-            if v:IsA("BodyAngularVelocity") or v.Name == "FlingVel" then v:Destroy() end
-        end
-    end
+-- SEÇÃO INF FLING COM BOTÃO STOP
+local InfH, _ = CreateList("INF FLING", Color3.fromRGB(200, 0, 0), 40, "♾️ INFINITE FLING LIST")
+NewButton("🛑 STOP INFINITE FLING", Color3.fromRGB(255, 0, 0), 0, function()
+    StopFling()
 end, InfH)
 
--- LÓGICA ESP
+local TPH, _ = CreateList("TP", Color3.fromRGB(25, 25, 25), 50, "📍 TELEPORT LIST")
+
+-- LÓGICA DE COR HÍBRIDA
+local function GetESPColor(p)
+    local char = p.Character
+    local bp = p:FindFirstChild("Backpack")
+    if char or bp then
+        if (char and char:FindFirstChild("Knife")) or (bp and bp:FindFirstChild("Knife")) then return Color3.fromRGB(255, 0, 0) end
+        if (char and char:FindFirstChild("Gun")) or (bp and bp:FindFirstChild("Gun")) then return Color3.fromRGB(0, 160, 255) end
+    end
+    if p.TeamColor and p.TeamColor ~= BrickColor.new("White") then return p.TeamColor.Color end
+    return Color3.fromRGB(0, 255, 100)
+end
+
+-- ESP
 local function CreateESP(p)
+    if p == Player then return end
     local highlight = Instance.new("Highlight")
     highlight.Name = "ESP_" .. p.Name
-    highlight.FillColor = Color3.fromRGB(255, 0, 0)
     highlight.FillTransparency = 0.5
-    local function Update()
+    RunService.RenderStepped:Connect(function()
         if _G.ESPEnabled and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
             highlight.Adornee = p.Character; highlight.Parent = ScreenGui
+            local color = GetESPColor(p)
+            highlight.FillColor = color; highlight.OutlineColor = color
         else
             highlight.Adornee = nil; highlight.Parent = nil
         end
-    end
-    RunService.RenderStepped:Connect(Update)
+    end)
 end
 
--- LÓGICA DE FLING MELHORADA
+-- FLING LOGIC PERSISTENTE
 local function ExecuteFling(target)
-    if not target.Character or not States.InfiniteFling then return end
-    local char = Player.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    local tHRP = target.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp or not tHRP then return end
-    
-    States.Flinging = true
-    local noclip = RunService.Stepped:Connect(function()
-        for _, v in pairs(char:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
-    end)
-    
-    local bav = Instance.new("BodyAngularVelocity", hrp)
-    bav.Name = "FlingVel"
-    bav.AngularVelocity = Vector3.new(0, _G.FlingForce, 0)
-    bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-    
-    local start = tick()
-    while tick() - start < 1 and States.InfiniteFling and States.Flinging do
-        if tHRP and hrp then 
-            hrp.CFrame = tHRP.CFrame * CFrame.Angles(0, math.rad(tick()*720), 0) 
-            hrp.AssemblyLinearVelocity = Vector3.new(0, 50, 0) -- Força extra
+    while States.InfiniteFling and InfiniteFlingTarget == target do
+        local char = Player.Character
+        local tChar = target.Character
+        if char and tChar then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            local tHRP = tChar:FindFirstChild("HumanoidRootPart")
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hrp and tHRP and hum and hum.Health > 0 then
+                local bav = hrp:FindFirstChild("FlingSpin") or Instance.new("BodyAngularVelocity", hrp)
+                bav.Name = "FlingSpin"
+                bav.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+                bav.AngularVelocity = Vector3.new(0, 999999, 0)
+                
+                hrp.CFrame = tHRP.CFrame * CFrame.new(math.random(-1,1), 0, math.random(-1,1))
+                hrp.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
+            end
         end
         task.wait()
     end
-    
-    bav:Destroy()
-    noclip:Disconnect()
-    if hrp then hrp.AssemblyLinearVelocity = Vector3.zero end
-    States.Flinging = false
+    StopFling() -- Garante limpeza ao sair do loop
 end
 
-local function Refresh()
-    for _, h in pairs({InfH, TPH}) do 
-        for _, c in pairs(h:GetChildren()) do 
-            if c:IsA("TextButton") and c ~= StopFlingBtn then c:Destroy() end 
-        end 
-    end
+local function RefreshLists()
+    -- Limpa apenas botões de jogadores, preservando o botão de STOP
+    for _, c in pairs(InfH:GetChildren()) do if c:IsA("TextButton") and c.LayoutOrder ~= 0 then c:Destroy() end end
+    for _, c in pairs(TPH:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
+    
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= Player then
-            -- Botão de Infinite Fling Individual
-            local pBtn = NewButton(p.DisplayName, Color3.fromRGB(100, 0, 160), 1, function()
+            NewButton(p.DisplayName, Color3.fromRGB(80, 0, 0), 1, function()
+                StopFling()
+                task.wait(0.1)
                 States.InfiniteFling = true
                 InfiniteFlingTarget = p
-                if InfiniteFlingThread then task.cancel(InfiniteFlingThread) end
-                InfiniteFlingThread = task.spawn(function() 
-                    while InfiniteFlingTarget == p and States.InfiniteFling do 
-                        ExecuteFling(p)
-                        task.wait(0.05) 
-                    end 
-                end)
+                task.spawn(function() ExecuteFling(p) end)
             end, InfH)
-            pBtn.Size = UDim2.new(1, -40, 0, 35)
             
-            -- Botão de Teleporte
-            local tpBtn = NewButton("TP: "..p.DisplayName, Color3.fromRGB(25, 90, 170), 1, function()
+            NewButton("TP TO: "..p.DisplayName, Color3.fromRGB(35, 35, 35), 1, function()
                 if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                     Player.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
                 end
             end, TPH)
-            tpBtn.Size = UDim2.new(1, -40, 0, 35)
         end
     end
 end
 
--- LOOPS E EVENTOS
+-- LOOPS DE FÍSICA
+RunService.Heartbeat:Connect(function()
+    local hum = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.WalkSpeed = _G.WalkSpeedValue
+        hum.UseJumpPower = true
+        hum.JumpPower = _G.JumpPowerValue
+        hum.JumpHeight = _G.JumpPowerValue
+    end
+end)
+
 RunService.RenderStepped:Connect(function()
-    local hum = Player.Character and Player.Character:FindFirstChild("Humanoid")
-    if hum then hum.WalkSpeed = _G.WalkSpeedValue; hum.JumpPower = _G.JumpPowerValue; hum.UseJumpPower = true end
     local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
     if States.Fly and hrp and hrp:FindFirstChild("FlyVel") then
         hrp.FlyGyro.CFrame = Camera.CFrame
@@ -301,6 +294,7 @@ RunService.RenderStepped:Connect(function()
         if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir += Vector3.new(1,0,0) end
         hrp.FlyVel.Velocity = Camera.CFrame:VectorToWorldSpace(dir * _G.FlySpeed)
     end
+    
     if _G.AimbotEnabled and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
         local closest, dist = nil, math.huge
         for _, p in pairs(Players:GetPlayers()) do
@@ -316,8 +310,9 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-for _, p in pairs(Players:GetPlayers()) do if p ~= Player then CreateESP(p) end end
-Players.PlayerAdded:Connect(function(p) CreateESP(p); Refresh() end)
-Players.PlayerRemoving:Connect(Refresh)
-Refresh()
+-- INICIALIZAÇÃO
+Players.PlayerAdded:Connect(function(p) CreateESP(p); RefreshLists() end)
+Players.PlayerRemoving:Connect(RefreshLists)
+for _, p in pairs(Players:GetPlayers()) do CreateESP(p) end
+RefreshLists()
 UserInputService.InputBegan:Connect(function(i, g) if not g and i.KeyCode == Enum.KeyCode.K then Main.Visible = not Main.Visible end end)
