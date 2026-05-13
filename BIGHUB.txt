@@ -1,619 +1,408 @@
 repeat task.wait() until game:IsLoaded()
 
-
-
 local Players = game:GetService("Players")
-
 local Player = Players.LocalPlayer
-
 local PlayerGui = Player:WaitForChild("PlayerGui")
-
 local RunService = game:GetService("RunService")
-
 local UserInputService = game:GetService("UserInputService")
-
 local TweenService = game:GetService("TweenService")
-
 local Camera = workspace.CurrentCamera
-
-
-
 
 for _, oldGui in pairs(PlayerGui:GetChildren()) do if oldGui.Name:match("BigHub") then oldGui:Destroy() end end
 
-
-
-
 _G.FlySpeed = 50
-
 _G.WalkSpeedValue = 16
-
 _G.JumpPowerValue = 50
-
-_G.AimbotEnabled = false
-
-_G.AimbotSmoothness = 0.05
-
 _G.ESPEnabled = false
 
-
-
 local States = {Fly = false, Flinging = false, InfiniteFling = false, Minimized = false}
-
 local InfiniteFlingTarget = nil
 
+getgenv().OldPos = nil
+getgenv().FPDH = workspace.FallenPartsDestroyHeight
 
-
+local function Message(Title, Text, Time)
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = Title,
+        Text = Text,
+        Duration = Time or 5
+    })
+end
 
 local function StopFling()
-
     States.InfiniteFling = false
-
     InfiniteFlingTarget = nil
-
     local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
-
     if hrp then
-
-        if hrp:FindFirstChild("FlingSpin") then hrp.FlingSpin:Destroy() end
-
         hrp.AssemblyLinearVelocity = Vector3.new(0,0,0)
-
         hrp.AssemblyAngularVelocity = Vector3.new(0,0,0)
-
     end
-
 end
 
+local function SkidFling(TargetPlayer)
+    local Character = Player.Character
+    local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
+    local RootPart = Humanoid and Humanoid.RootPart
+    local TCharacter = TargetPlayer.Character
+    if not TCharacter then return end
 
+    local THumanoid, TRootPart, THead, Accessory, Handle
 
-local ScreenGui = Instance.new("ScreenGui", PlayerGui)
-
-ScreenGui.Name = "BigHub_V9_Final_Fixed"
-
-ScreenGui.ResetOnSpawn = false
-
-ScreenGui.DisplayOrder = 9999
-
-
-
-local Main = Instance.new("Frame", ScreenGui)
-
-Main.Size = UDim2.new(0, 320, 0, 550)
-
-Main.Position = UDim2.new(0.5, -160, 0.2, 0)
-
-Main.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-
-Main.Active = true
-
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
-
-
-
-local MainStroke = Instance.new("UIStroke", Main)
-
-MainStroke.Color = Color3.fromRGB(255, 0, 0)
-
-MainStroke.Thickness = 2.5
-
-MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-
-
-
-local Title = Instance.new("TextButton", Main)
-
-Title.Size = UDim2.new(1, 0, 0, 50)
-
-Title.Text = "😈 BIG HUB V9.1 - FIXED"
-
-Title.BackgroundColor3 = Color3.fromRGB(20, 0, 0)
-
-Title.TextColor3 = Color3.fromRGB(255, 0, 0)
-
-Title.Font = Enum.Font.GothamBold
-
-Title.TextSize = 16
-
-Title.AutoButtonColor = false
-
-Instance.new("UICorner", Title).CornerRadius = UDim.new(0, 10)
-
-
-
-local MinimizeBtn = Instance.new("TextButton", Title)
-
-MinimizeBtn.Size = UDim2.new(0, 40, 0, 40)
-
-MinimizeBtn.Position = UDim2.new(1, -45, 0.5, -20)
-
-MinimizeBtn.BackgroundTransparency = 1
-
-MinimizeBtn.Text = "-"
-
-MinimizeBtn.TextColor3 = Color3.new(1, 1, 1)
-
-MinimizeBtn.TextSize = 30
-
-MinimizeBtn.Font = Enum.Font.GothamBold
-
-
-
-
-local dragging, dragStart, startPos
-
-Title.InputBegan:Connect(function(input)
-
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-
-        dragging = true; dragStart = input.Position; startPos = Main.Position
-
+    if TCharacter:FindFirstChildOfClass("Humanoid") then
+        THumanoid = TCharacter:FindFirstChildOfClass("Humanoid")
+    end
+    if THumanoid and THumanoid.RootPart then
+        TRootPart = THumanoid.RootPart
+    end
+    if TCharacter:FindFirstChild("Head") then
+        THead = TCharacter.Head
+    end
+    if TCharacter:FindFirstChildOfClass("Accessory") then
+        Accessory = TCharacter:FindFirstChildOfClass("Accessory")
+    end
+    if Accessory and Accessory:FindFirstChild("Handle") then
+        Handle = Accessory.Handle
     end
 
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-
-        local delta = input.Position - dragStart
-
-        Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-
-    end
-
-end)
-
-UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
-
-
-
-local Container = Instance.new("ScrollingFrame", Main)
-
-Container.Size = UDim2.new(1, 0, 1, -60)
-
-Container.Position = UDim2.new(0, 0, 0, 55)
-
-Container.BackgroundTransparency = 1
-
-Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
-
-Container.ScrollBarThickness = 2
-
-Container.ScrollBarImageColor3 = Color3.fromRGB(255, 0, 0)
-
-
-
-local Layout = Instance.new("UIListLayout", Container)
-
-Layout.Padding = UDim.new(0, 12)
-
-Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-
-Layout.SortOrder = Enum.SortOrder.LayoutOrder
-
-
-
--- LÓGICA MINIMIZAR
-
-MinimizeBtn.MouseButton1Click:Connect(function()
-
-    States.Minimized = not States.Minimized
-
-    local targetSize = States.Minimized and UDim2.new(0, 320, 0, 50) or UDim2.new(0, 320, 0, 550)
-
-    MinimizeBtn.Text = States.Minimized and "+" or "-"
-
-    Container.Visible = not States.Minimized
-
-    TweenService:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = targetSize}):Play()
-
-end)
-
-
-
--- CONSTRUTORES DE UI
-
-local function NewButton(text, color, order, callback, parent)
-
-    local btn = Instance.new("TextButton", parent or Container)
-
-    btn.Size = UDim2.new(1, -30, 0, 45); btn.BackgroundColor3 = color; btn.TextColor3 = Color3.new(1, 1, 1); btn.Text = text
-
-    btn.Font = Enum.Font.GothamBold; btn.TextSize = 14; btn.LayoutOrder = order
-
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
-
-    btn.MouseButton1Click:Connect(function() callback(btn) end)
-
-    return btn
-
-end
-
-
-
-local function NewSlider(name, min, max, default, order, callback, parent)
-
-    local frame = Instance.new("Frame", parent or Container)
-
-    frame.Size = UDim2.new(1, -30, 0, 75); frame.BackgroundTransparency = 1; frame.LayoutOrder = order
-
-    local lab = Instance.new("TextLabel", frame)
-
-    lab.Size = UDim2.new(1, 0, 0, 25); lab.Text = name .. ": " .. default; lab.TextColor3 = Color3.new(1,1,1); lab.BackgroundTransparency = 1; lab.Font = Enum.Font.GothamBold; lab.TextSize = 14
-
-    local back = Instance.new("Frame", frame)
-
-    back.Size = UDim2.new(1, 0, 0, 12); back.Position = UDim2.new(0, 0, 0, 35); back.BackgroundColor3 = Color3.fromRGB(30, 30, 30); Instance.new("UICorner", back)
-
-    local fill = Instance.new("Frame", back)
-
-    fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0); fill.BackgroundColor3 = Color3.fromRGB(255, 0, 0); Instance.new("UICorner", fill)
-
-    local sliding = false
-
-    local function Upd()
-
-        local mousePos = UserInputService:GetMouseLocation().X
-
-        local pct = math.clamp((mousePos - back.AbsolutePosition.X) / back.AbsoluteSize.X, 0, 1)
-
-        fill.Size = UDim2.new(pct, 0, 1, 0)
-
-        local val = math.floor(min + (max - min) * pct)
-
-        lab.Text = name .. ": " .. val; callback(val)
-
-    end
-
-    back.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then sliding = true; Upd() end end)
-
-    UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then sliding = false end end)
-
-    RunService.RenderStepped:Connect(function() if sliding then Upd() end end)
-
-    return frame
-
-end
-
-
-
-local function CreateList(name, color, order, btnText)
-
-    local mainBtn = NewButton(btnText, color, order, function() end)
-
-    local holder = Instance.new("Frame", Container)
-
-    holder.Size = UDim2.new(1, 0, 0, 0); holder.BackgroundTransparency = 1; holder.ClipsDescendants = true; holder.LayoutOrder = order + 1
-
-    local lyt = Instance.new("UIListLayout", holder); lyt.Padding = UDim.new(0, 8); lyt.HorizontalAlignment = Enum.HorizontalAlignment.Center
-
-    mainBtn.MouseButton1Click:Connect(function()
-
-        local isOpen = holder.Size.Y.Offset > 0
-
-        local targetSize = isOpen and 0 or lyt.AbsoluteContentSize.Y
-
-        mainBtn.Text = isOpen and btnText or "❌ CLOSE " .. name
-
-        TweenService:Create(holder, TweenInfo.new(0.3), {Size = UDim2.new(1, 0, 0, targetSize)}):Play()
-
-    end)
-
-    return holder, mainBtn
-
-end
-
-
-
--- SEÇÕES
-
-local BasicH, _ = CreateList("BASICS", Color3.fromRGB(30, 0, 0), 10, "⚙️ BASICS & MOVEMENT")
-
-NewButton("🚀 FLY MODE", Color3.fromRGB(50, 0, 0), 1, function(self)
-
-    States.Fly = not States.Fly
-
-    self.BackgroundColor3 = States.Fly and Color3.fromRGB(150, 0, 0) or Color3.fromRGB(50, 0, 0)
-
-    local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
-
-    if States.Fly and hrp then
-
-        local bg = Instance.new("BodyGyro", hrp); bg.Name = "FlyGyro"; bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9); bg.P = 9e4
-
-        local bv = Instance.new("BodyVelocity", hrp); bv.Name = "FlyVel"; bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-
-    elseif hrp then
-
-        if hrp:FindFirstChild("FlyGyro") then hrp.FlyGyro:Destroy() end
-
-        if hrp:FindFirstChild("FlyVel") then hrp.FlyVel:Destroy() end
-
-    end
-
-end, BasicH)
-
-NewSlider("⚡ FLY SPEED", 10, 500, _G.FlySpeed, 2, function(v) _G.FlySpeed = v end, BasicH)
-
-NewSlider("👟 WALK SPEED", 16, 350, _G.WalkSpeedValue, 3, function(v) _G.WalkSpeedValue = v end, BasicH)
-
-NewSlider("⏫ JUMP POWER", 50, 500, _G.JumpPowerValue, 4, function(v) _G.JumpPowerValue = v end, BasicH)
-
-
-
-local AimH, _ = CreateList("AIMBOT", Color3.fromRGB(100, 0, 0), 20, "🎯 AIMBOT SETTINGS")
-
-NewButton("ENABLE AIMBOT", Color3.fromRGB(50, 0, 0), 1, function(self)
-
-    _G.AimbotEnabled = not _G.AimbotEnabled
-
-    self.BackgroundColor3 = _G.AimbotEnabled and Color3.fromRGB(200, 0, 0) or Color3.fromRGB(50, 0, 0)
-
-end, AimH)
-
-NewSlider("SMOOTHNESS", 1, 10, 5, 2, function(v) _G.AimbotSmoothness = v / 100 end, AimH)
-
-
-
-local VisualH, _ = CreateList("VISUAL", Color3.fromRGB(150, 0, 0), 30, "👁️ VISUAL & ESP")
-
-NewButton("ENABLE ESP", Color3.fromRGB(50, 0, 0), 1, function(self)
-
-    _G.ESPEnabled = not _G.ESPEnabled
-
-    self.BackgroundColor3 = _G.ESPEnabled and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(50, 0, 0)
-
-end, VisualH)
-
-
-
-local InfH, _ = CreateList("INF FLING", Color3.fromRGB(200, 0, 0), 40, "♾️ INFINITE FLING LIST")
-
-NewButton("🛑 STOP INFINITE FLING", Color3.fromRGB(255, 0, 0), 0, function()
-
-    StopFling()
-
-end, InfH)
-
-
-
-local TPH, _ = CreateList("TP", Color3.fromRGB(25, 25, 25), 50, "📍 TELEPORT LIST")
-
-
-
-
-local function GetESPColor(p)
-
-    local char = p.Character
-
-    local bp = p:FindFirstChild("Backpack")
-
-    if char or bp then
-
-        if (char and char:FindFirstChild("Knife")) or (bp and bp:FindFirstChild("Knife")) then return Color3.fromRGB(255, 0, 0) end
-
-        if (char and char:FindFirstChild("Gun")) or (bp and bp:FindFirstChild("Gun")) then return Color3.fromRGB(0, 160, 255) end
-
-    end
-
-    if p.TeamColor and p.TeamColor ~= BrickColor.new("White") then return p.TeamColor.Color end
-
-    return Color3.fromRGB(0, 255, 100)
-
-end
-
-
-
-local function CreateESP(p)
-
-    if p == Player then return end
-
-    local highlight = Instance.new("Highlight")
-
-    highlight.Name = "ESP_" .. p.Name
-
-    highlight.FillTransparency = 0.5
-
-    RunService.RenderStepped:Connect(function()
-
-        if _G.ESPEnabled and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-
-            highlight.Adornee = p.Character; highlight.Parent = ScreenGui
-
-            local color = GetESPColor(p)
-
-            highlight.FillColor = color; highlight.OutlineColor = color
-
-        else
-
-            highlight.Adornee = nil; highlight.Parent = nil
-
+    if Character and Humanoid and RootPart then
+        if RootPart.Velocity.Magnitude < 50 then
+            getgenv().OldPos = RootPart.CFrame
         end
 
-    end)
+        if THumanoid and THumanoid.Sit then
+            return Message("Error", TargetPlayer.Name .. " is sitting", 2)
+        end
 
+        if THead then
+            workspace.CurrentCamera.CameraSubject = THead
+        elseif Handle then
+            workspace.CurrentCamera.CameraSubject = Handle
+        elseif THumanoid and TRootPart then
+            workspace.CurrentCamera.CameraSubject = THumanoid
+        end
+
+        if not TCharacter:FindFirstChildWhichIsA("BasePart") then return end
+
+        local FPos = function(BasePart, Pos, Ang)
+            RootPart.CFrame = CFrame.new(BasePart.Position) * Pos * Ang
+            Character:SetPrimaryPartCFrame(CFrame.new(BasePart.Position) * Pos * Ang)
+            RootPart.Velocity = Vector3.new(9e7, 9e7 * 10, 9e7)
+            RootPart.RotVelocity = Vector3.new(9e8, 9e8, 9e8)
+        end
+
+        local SFBasePart = function(BasePart)
+            local TimeToWait = 2
+            local Time = tick()
+            local Angle = 0
+            repeat
+                if RootPart and THumanoid then
+                    if BasePart.Velocity.Magnitude < 50 then
+                        Angle = Angle + 100
+                        FPos(BasePart, CFrame.new(0, 1.5, 0) + THumanoid.MoveDirection * BasePart.Velocity.Magnitude / 1.25, CFrame.Angles(math.rad(Angle),0,0))
+                        task.wait()
+                        FPos(BasePart, CFrame.new(0, -1.5, 0) + THumanoid.MoveDirection * BasePart.Velocity.Magnitude / 1.25, CFrame.Angles(math.rad(Angle),0,0))
+                        task.wait()
+                        FPos(BasePart, CFrame.new(0, 1.5, 0) + THumanoid.MoveDirection, CFrame.Angles(math.rad(Angle),0,0))
+                        task.wait()
+                        FPos(BasePart, CFrame.new(0, -1.5, 0) + THumanoid.MoveDirection, CFrame.Angles(math.rad(Angle),0,0))
+                        task.wait()
+                    else
+                        FPos(BasePart, CFrame.new(0, 1.5, THumanoid.WalkSpeed), CFrame.Angles(math.rad(90),0,0))
+                        task.wait()
+                        FPos(BasePart, CFrame.new(0, -1.5, -THumanoid.WalkSpeed), CFrame.Angles(0,0,0))
+                        task.wait()
+                        FPos(BasePart, CFrame.new(0, 1.5, THumanoid.WalkSpeed), CFrame.Angles(math.rad(90),0,0))
+                        task.wait()
+                        FPos(BasePart, CFrame.new(0, -1.5, 0), CFrame.Angles(math.rad(90),0,0))
+                        task.wait()
+                        FPos(BasePart, CFrame.new(0, -1.5, 0), CFrame.Angles(0,0,0))
+                        task.wait()
+                        FPos(BasePart, CFrame.new(0, -1.5, 0), CFrame.Angles(math.rad(90),0,0))
+                        task.wait()
+                        FPos(BasePart, CFrame.new(0, -1.5, 0), CFrame.Angles(0,0,0))
+                        task.wait()
+                    end
+                end
+            until Time + TimeToWait < tick() or not States.InfiniteFling
+        end
+
+        workspace.FallenPartsDestroyHeight = 0/0
+
+        local BV = Instance.new("BodyVelocity")
+        BV.Parent = RootPart
+        BV.Velocity = Vector3.new(0,0,0)
+        BV.MaxForce = Vector3.new(9e9,9e9,9e9)
+
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+
+        if TRootPart then
+            SFBasePart(TRootPart)
+        elseif THead then
+            SFBasePart(THead)
+        elseif Handle then
+            SFBasePart(Handle)
+        else
+            return Message("Error", TargetPlayer.Name .. " has no valid parts", 2)
+        end
+
+        BV:Destroy()
+        Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+        workspace.CurrentCamera.CameraSubject = Humanoid
+
+        if getgenv().OldPos then
+            repeat
+                RootPart.CFrame = getgenv().OldPos * CFrame.new(0, .5, 0)
+                Character:SetPrimaryPartCFrame(getgenv().OldPos * CFrame.new(0, .5, 0))
+                Humanoid:ChangeState("GettingUp")
+                for _, part in pairs(Character:GetChildren()) do
+                    if part:IsA("BasePart") then
+                        part.Velocity, part.RotVelocity = Vector3.new(), Vector3.new()
+                    end
+                end
+                task.wait()
+            until (RootPart.Position - getgenv().OldPos.p).Magnitude < 25
+            workspace.FallenPartsDestroyHeight = getgenv().FPDH
+        end
+    else
+        return Message("Error", "Your character is not ready", 2)
+    end
 end
-
-
 
 local function ExecuteFling(target)
-
     while States.InfiniteFling and InfiniteFlingTarget == target do
-
-        local char = Player.Character
-
-        local tChar = target.Character
-
-        if char and tChar then
-
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-
-            local tHRP = tChar:FindFirstChild("HumanoidRootPart")
-
-            local hum = char:FindFirstChildOfClass("Humanoid")
-
-            if hrp and tHRP and hum and hum.Health > 0 then
-
-                local bav = hrp:FindFirstChild("FlingSpin") or Instance.new("BodyAngularVelocity", hrp)
-
-                bav.Name = "FlingSpin"
-
-                bav.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-
-                bav.AngularVelocity = Vector3.new(0, 999999, 0)
-
-                
-
-                hrp.CFrame = tHRP.CFrame * CFrame.new(math.random(-1,1), 0, math.random(-1,1))
-
-                hrp.AssemblyLinearVelocity = Vector3.new(99999, 99999, 99999)
-
-            end
-
-        end
-
-        task.wait()
-
+        SkidFling(target)
+        task.wait(0.5)
     end
-
     StopFling()
-
 end
 
+-- GUI
+local ScreenGui = Instance.new("ScreenGui", PlayerGui)
+ScreenGui.Name = "BigHub_V9_Final_Fixed"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.DisplayOrder = 9999
 
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = UDim2.new(0, 320, 0, 500)
+Main.Position = UDim2.new(0.5, -160, 0.2, 0)
+Main.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+Main.Active = true
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
+
+local MainStroke = Instance.new("UIStroke", Main)
+MainStroke.Color = Color3.fromRGB(255, 0, 0)
+MainStroke.Thickness = 2.5
+MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+local Title = Instance.new("TextButton", Main)
+Title.Size = UDim2.new(1, 0, 0, 50)
+Title.Text = "😈 BIG HUB V9.1 - FIXED"
+Title.BackgroundColor3 = Color3.fromRGB(20, 0, 0)
+Title.TextColor3 = Color3.fromRGB(255, 0, 0)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 16
+Title.AutoButtonColor = false
+Instance.new("UICorner", Title).CornerRadius = UDim.new(0, 10)
+
+local MinimizeBtn = Instance.new("TextButton", Title)
+MinimizeBtn.Size = UDim2.new(0, 40, 0, 40)
+MinimizeBtn.Position = UDim2.new(1, -45, 0.5, -20)
+MinimizeBtn.BackgroundTransparency = 1
+MinimizeBtn.Text = "-"
+MinimizeBtn.TextColor3 = Color3.new(1,1,1)
+MinimizeBtn.TextSize = 30
+MinimizeBtn.Font = Enum.Font.GothamBold
+
+local dragging, dragStart, startPos
+Title.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true; dragStart = input.Position; startPos = Main.Position
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
+
+local Container = Instance.new("ScrollingFrame", Main)
+Container.Size = UDim2.new(1, 0, 1, -60)
+Container.Position = UDim2.new(0, 0, 0, 55)
+Container.BackgroundTransparency = 1
+Container.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Container.ScrollBarThickness = 2
+Container.ScrollBarImageColor3 = Color3.fromRGB(255, 0, 0)
+
+local Layout = Instance.new("UIListLayout", Container)
+Layout.Padding = UDim.new(0, 12)
+Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+Layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+MinimizeBtn.MouseButton1Click:Connect(function()
+    States.Minimized = not States.Minimized
+    local targetSize = States.Minimized and UDim2.new(0, 320, 0, 50) or UDim2.new(0, 320, 0, 500)
+    MinimizeBtn.Text = States.Minimized and "+" or "-"
+    Container.Visible = not States.Minimized
+    TweenService:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = targetSize}):Play()
+end)
+
+local function NewButton(text, color, order, callback, parent)
+    local btn = Instance.new("TextButton", parent or Container)
+    btn.Size = UDim2.new(1, -30, 0, 45); btn.BackgroundColor3 = color; btn.TextColor3 = Color3.new(1,1,1); btn.Text = text
+    btn.Font = Enum.Font.GothamBold; btn.TextSize = 14; btn.LayoutOrder = order
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    btn.MouseButton1Click:Connect(function() callback(btn) end)
+    return btn
+end
+
+local function NewSlider(name, min, max, default, order, callback, parent)
+    local frame = Instance.new("Frame", parent or Container)
+    frame.Size = UDim2.new(1, -30, 0, 75); frame.BackgroundTransparency = 1; frame.LayoutOrder = order
+    local lab = Instance.new("TextLabel", frame)
+    lab.Size = UDim2.new(1, 0, 0, 25); lab.Text = name .. ": " .. default; lab.TextColor3 = Color3.new(1,1,1); lab.BackgroundTransparency = 1; lab.Font = Enum.Font.GothamBold; lab.TextSize = 14
+    local back = Instance.new("Frame", frame)
+    back.Size = UDim2.new(1, 0, 0, 12); back.Position = UDim2.new(0, 0, 0, 35); back.BackgroundColor3 = Color3.fromRGB(30,30,30); Instance.new("UICorner", back)
+    local fill = Instance.new("Frame", back)
+    fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0); fill.BackgroundColor3 = Color3.fromRGB(255,0,0); Instance.new("UICorner", fill)
+    local sliding = false
+    local function Upd()
+        local mousePos = UserInputService:GetMouseLocation().X
+        local pct = math.clamp((mousePos - back.AbsolutePosition.X) / back.AbsoluteSize.X, 0, 1)
+        fill.Size = UDim2.new(pct, 0, 1, 0)
+        local val = math.floor(min + (max - min) * pct)
+        lab.Text = name .. ": " .. val; callback(val)
+    end
+    back.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then sliding = true; Upd() end end)
+    UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then sliding = false end end)
+    RunService.RenderStepped:Connect(function() if sliding then Upd() end end)
+    return frame
+end
+
+local function CreateList(name, color, order, btnText)
+    local mainBtn = NewButton(btnText, color, order, function() end)
+    local holder = Instance.new("Frame", Container)
+    holder.Size = UDim2.new(1, 0, 0, 0); holder.BackgroundTransparency = 1; holder.ClipsDescendants = true; holder.LayoutOrder = order + 1
+    local lyt = Instance.new("UIListLayout", holder); lyt.Padding = UDim.new(0, 8); lyt.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    mainBtn.MouseButton1Click:Connect(function()
+        local isOpen = holder.Size.Y.Offset > 0
+        local targetSize = isOpen and 0 or lyt.AbsoluteContentSize.Y
+        mainBtn.Text = isOpen and btnText or "❌ CLOSE " .. name
+        TweenService:Create(holder, TweenInfo.new(0.3), {Size = UDim2.new(1, 0, 0, targetSize)}):Play()
+    end)
+    return holder, mainBtn
+end
+
+-- SEÇÕES
+local BasicH, _ = CreateList("BASICS", Color3.fromRGB(30,0,0), 10, "⚙️ BASICS & MOVEMENT")
+NewButton("🚀 FLY MODE", Color3.fromRGB(50,0,0), 1, function(self)
+    States.Fly = not States.Fly
+    self.BackgroundColor3 = States.Fly and Color3.fromRGB(150,0,0) or Color3.fromRGB(50,0,0)
+    local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+    if States.Fly and hrp then
+        local bg = Instance.new("BodyGyro", hrp); bg.Name = "FlyGyro"; bg.MaxTorque = Vector3.new(9e9,9e9,9e9); bg.P = 9e4
+        local bv = Instance.new("BodyVelocity", hrp); bv.Name = "FlyVel"; bv.MaxForce = Vector3.new(9e9,9e9,9e9)
+    elseif hrp then
+        if hrp:FindFirstChild("FlyGyro") then hrp.FlyGyro:Destroy() end
+        if hrp:FindFirstChild("FlyVel") then hrp.FlyVel:Destroy() end
+    end
+end, BasicH)
+NewSlider("⚡ FLY SPEED", 10, 500, _G.FlySpeed, 2, function(v) _G.FlySpeed = v end, BasicH)
+NewSlider("👟 WALK SPEED", 16, 350, _G.WalkSpeedValue, 3, function(v) _G.WalkSpeedValue = v end, BasicH)
+NewSlider("⏫ JUMP POWER", 50, 500, _G.JumpPowerValue, 4, function(v) _G.JumpPowerValue = v end, BasicH)
+
+local VisualH, _ = CreateList("VISUAL", Color3.fromRGB(150,0,0), 30, "👁️ VISUAL & ESP")
+NewButton("ENABLE ESP", Color3.fromRGB(50,0,0), 1, function(self)
+    _G.ESPEnabled = not _G.ESPEnabled
+    self.BackgroundColor3 = _G.ESPEnabled and Color3.fromRGB(255,0,0) or Color3.fromRGB(50,0,0)
+end, VisualH)
+
+local InfH, _ = CreateList("INF FLING", Color3.fromRGB(200,0,0), 40, "♾️ INFINITE FLING LIST")
+NewButton("🛑 STOP INFINITE FLING", Color3.fromRGB(255,0,0), 0, function()
+    StopFling()
+end, InfH)
+
+local TPH, _ = CreateList("TP", Color3.fromRGB(25,25,25), 50, "📍 TELEPORT LIST")
+
+local function GetESPColor(p)
+    local char = p.Character
+    local bp = p:FindFirstChild("Backpack")
+    if char or bp then
+        if (char and char:FindFirstChild("Knife")) or (bp and bp:FindFirstChild("Knife")) then return Color3.fromRGB(255,0,0) end
+        if (char and char:FindFirstChild("Gun")) or (bp and bp:FindFirstChild("Gun")) then return Color3.fromRGB(0,160,255) end
+    end
+    if p.TeamColor and p.TeamColor ~= BrickColor.new("White") then return p.TeamColor.Color end
+    return Color3.fromRGB(0,255,100)
+end
+
+local function CreateESP(p)
+    if p == Player then return end
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "ESP_" .. p.Name
+    highlight.FillTransparency = 0.5
+    RunService.RenderStepped:Connect(function()
+        if _G.ESPEnabled and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            highlight.Adornee = p.Character; highlight.Parent = ScreenGui
+            local color = GetESPColor(p)
+            highlight.FillColor = color; highlight.OutlineColor = color
+        else
+            highlight.Adornee = nil; highlight.Parent = nil
+        end
+    end)
+end
 
 local function RefreshLists()
-
     for _, c in pairs(InfH:GetChildren()) do if c:IsA("TextButton") and c.LayoutOrder ~= 0 then c:Destroy() end end
-
     for _, c in pairs(TPH:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
 
-    
-
     for _, p in pairs(Players:GetPlayers()) do
-
         if p ~= Player then
-
-            NewButton(p.DisplayName, Color3.fromRGB(80, 0, 0), 1, function()
-
+            NewButton(p.DisplayName, Color3.fromRGB(80,0,0), 1, function()
                 StopFling()
-
                 task.wait(0.1)
-
                 States.InfiniteFling = true
-
                 InfiniteFlingTarget = p
-
                 task.spawn(function() ExecuteFling(p) end)
-
             end, InfH)
 
-            
-
-            NewButton("TP TO: "..p.DisplayName, Color3.fromRGB(35, 35, 35), 1, function()
-
+            NewButton("TP TO: "..p.DisplayName, Color3.fromRGB(35,35,35), 1, function()
                 if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-
                     Player.Character.HumanoidRootPart.CFrame = p.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,3)
-
                 end
-
             end, TPH)
-
         end
-
     end
-
 end
 
-
-
 RunService.Heartbeat:Connect(function()
-
     local hum = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
-
     if hum then
-
         hum.WalkSpeed = _G.WalkSpeedValue
-
         hum.UseJumpPower = true
-
         hum.JumpPower = _G.JumpPowerValue
-
         hum.JumpHeight = _G.JumpPowerValue
-
     end
-
 end)
-
-
 
 RunService.RenderStepped:Connect(function()
-
     local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
-
     if States.Fly and hrp and hrp:FindFirstChild("FlyVel") then
-
         hrp.FlyGyro.CFrame = Camera.CFrame
-
         local dir = Vector3.zero
-
         if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir += Vector3.new(0,0,-1) end
-
         if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir += Vector3.new(0,0,1) end
-
         if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir += Vector3.new(-1,0,0) end
-
         if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir += Vector3.new(1,0,0) end
-
         hrp.FlyVel.Velocity = Camera.CFrame:VectorToWorldSpace(dir * _G.FlySpeed)
-
     end
-
-    
-
-    if _G.AimbotEnabled and UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) then
-
-        local closest, dist = nil, math.huge
-
-        for _, p in pairs(Players:GetPlayers()) do
-
-            if p ~= Player and p.Character and p.Character:FindFirstChild("Head") then
-
-                local pos, on = Camera:WorldToViewportPoint(p.Character.Head.Position)
-
-                if on then
-
-                    local d = (Vector2.new(pos.X, pos.Y) - UserInputService:GetMouseLocation()).Magnitude
-
-                    if d < dist then closest = p; dist = d end
-
-                end
-
-            end
-
-        end
-
-        if closest then Camera.CFrame = Camera.CFrame:lerp(CFrame.new(Camera.CFrame.Position, closest.Character.Head.Position), 1 - _G.AimbotSmoothness) end
-
-    end
-
 end)
 
-
-
-
 Players.PlayerAdded:Connect(function(p) CreateESP(p); RefreshLists() end)
-
 Players.PlayerRemoving:Connect(RefreshLists)
-
 for _, p in pairs(Players:GetPlayers()) do CreateESP(p) end
-
 RefreshLists()
-
 UserInputService.InputBegan:Connect(function(i, g) if not g and i.KeyCode == Enum.KeyCode.K then Main.Visible = not Main.Visible end end)
-
 
 --[[ 
     Source script taken from: https://github.com/Roblox/creator-docs/blob/main/content/en-us/characters/emotes.md
@@ -624,7 +413,7 @@ UserInputService.InputBegan:Connect(function(i, g) if not g and i.KeyCode == Enu
 
 if _G.EmotesGUIRunning then
     getgenv().Notify({
-        Title = '7yd7 | Emote',
+        Title = 'BIGHUB | Emote',
         Content = '⚠️ It works It actually works',
         Duration = 5
     })
@@ -779,6 +568,48 @@ HUD = {
         ["Under"] = "Under"
     }
 }
+
+
+
+
+-- Executa a função em uma thread separada para não travar o script principal
+task.spawn(function()
+    -- Espera o script sinalizar que a GUI foi criada
+    while not State.isGUICreated do 
+        task.wait(0.5) 
+    end
+    AplicarContornoVermelho()
+end)
+
+-- Função para aplicar o contorno sem travar o script
+local function ApplyRedOutline(object)
+    if object:IsA("Frame") or object:IsA("ScrollingFrame") or object:IsA("TextBox") or object:IsA("TextButton") then
+        local stroke = object:FindFirstChild("MenuOutline") or Instance.new("UIStroke")
+        stroke.Name = "MenuOutline"
+        stroke.Color = Color3.fromRGB(255, 0, 0) -- Vermelho
+        stroke.Thickness = 1.5
+        stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+        stroke.Parent = object
+        object.BorderSizePixel = 0
+    end
+end
+
+task.spawn(function()
+    -- Procura a GUI a cada 1 segundo até achar, sem travar o resto do código
+    local targetGui = nil
+    while not targetGui do
+        targetGui = CoreGui:FindFirstChild("EmoteGUI") or CoreGui:FindFirstChild("BIGHUB_Emotes") or CoreGui:FindFirstChild("ScreenGui")
+        task.wait(1)
+    end
+
+    -- Aplica nos elementos atuais
+    for _, v in pairs(targetGui:GetDescendants()) do
+        ApplyRedOutline(v)
+    end
+
+    -- Aplica em novos elementos (como ao trocar de página)
+    targetGui.DescendantAdded:Connect(ApplyRedOutline)
+end)
 
 local DEFAULT_IDLE_ICON_ID = "rbxassetid://106798555684020"
 local DEFAULT_IDLE_ICON_COLOR = Color3.fromRGB(0, 255, 150)
@@ -1268,7 +1099,7 @@ function SafeLoad(url, name)
     
     if not success or not content or content == "" then
         getgenv().Notify({
-            Title = '7yd7 | Error',
+            Title = 'BIGHUB | Error',
             Content = 'Failed to download ' .. (name or "script") .. ' after 3 attempts.',
             Duration = 5
         })
@@ -1277,13 +1108,13 @@ function SafeLoad(url, name)
 
     local func, err = loadstring(content)
     if not func then
-        warn("7yd7 | SafeLoad: Failed to parse " .. (name or "script") .. ": " .. tostring(err))
+        warn("BIGHUB | SafeLoad: Failed to parse " .. (name or "script") .. ": " .. tostring(err))
         return function() end
     end
 
     local ok, res = pcall(func)
     if not ok then
-        warn("7yd7 | SafeLoad: Error executing " .. (name or "script") .. ": " .. tostring(res))
+        warn("BIGHUB | SafeLoad: Error executing " .. (name or "script") .. ": " .. tostring(res))
         return function() end
     end
     return res
@@ -1341,7 +1172,7 @@ function GetAsset(asset)
             if success and content and content ~= "" then
                 local low = content:sub(1, 100):lower()
                 if low:find("<!doctype") or low:find("<html") or low:find("<head") then
-                    warn("7yd7 | GetAsset: Downloaded content appears to be HTML. Link might be incorrect: " .. targetUrl)
+                    warn("BIGHUB | GetAsset: Downloaded content appears to be HTML. Link might be incorrect: " .. targetUrl)
                     return ""
                 end
                 
@@ -2455,7 +2286,7 @@ end
 function ApplyTheme(themeData)
     if State.isApplyingTheme then return end
     if not themeData then
-        warn("7yd7 | ApplyTheme: themeData is nil. Falling back to Default.")
+        warn("BIGHUB | ApplyTheme: themeData is nil. Falling back to Default.")
         themeData = themes and themes["Default"] or nil
         if not themeData then return end
     end
@@ -3065,7 +2896,7 @@ end
 State.enterCustomAnimationEditor = function(category, animName)
     if State.customAnimationEditorActive then return end
     if State.currentCustomAnimationName == "Default" then
-        getgenv().Notify({ Title = "7yd7 | Error", Content = "Cannot edit Default Animation set. Create a new one!", Duration = 3 })
+        getgenv().Notify({ Title = "BIGHUB | Error", Content = "Cannot edit Default Animation set. Create a new one!", Duration = 3 })
         return
     end
 
@@ -3170,7 +3001,7 @@ State.enterCustomAnimationEditor = function(category, animName)
 
     if UI._2Routenumber then UI._2Routenumber.TextEditable = false; UI._2Routenumber.Active = false; pcall(function() UI._2Routenumber:ReleaseFocus() end) end
 
-    getgenv().Notify({ Title = "7yd7 | Animation Editor", Content = "🖱️ Select an animation from the wheel to set for " .. animName, Duration = 5 })
+    getgenv().Notify({ Title = "BIGHUB | Animation Editor", Content = "🖱️ Select an animation from the wheel to set for " .. animName, Duration = 5 })
 end
 
 State.CustomAnimTab = SettingsLib.CreateTab("Animation", 4)
@@ -3436,7 +3267,7 @@ SettingsLib.AddIconButton(CustomAnimMgtContainer, "78317476576895", function()
             if State.ApplyCustomAnimIconUI then State.ApplyCustomAnimIconUI() end
             if refreshCustomAnimationState then refreshCustomAnimationState(false) end
             popup:Destroy()
-            getgenv().Notify({ Title = "7yd7 | Animation", Content = "✅ Imported custom animations", Duration = 3 })
+            getgenv().Notify({ Title = "BIGHUB | Animation", Content = "✅ Imported custom animations", Duration = 3 })
         else
             getgenv().Notify({ Title = "Error", Content = "Invalid JSON", Duration = 3 })
         end
@@ -3731,7 +3562,7 @@ SettingsLib.AddIconButton(EmotePageMgtContainer, "78317476576895", function()
             end
             SwitchEmotePage(targetName)
             popup:Destroy()
-            getgenv().Notify({ Title = "7yd7 | Page", Content = "✅ Imported Emote page", Duration = 3 })
+            getgenv().Notify({ Title = "BIGHUB | Page", Content = "✅ Imported Emote page", Duration = 3 })
         else
             getgenv().Notify({ Title = "Error", Content = "Invalid Emote Page JSON", Duration = 3 })
         end
@@ -3883,7 +3714,7 @@ SettingsLib.AddIconButton(AnimPageMgtContainer, "78317476576895", function()
             end
             SwitchAnimationPage(targetName)
             popup:Destroy()
-            getgenv().Notify({ Title = "7yd7 | Page", Content = "✅ Imported Animation page", Duration = 3 })
+            getgenv().Notify({ Title = "BIGHUB | Page", Content = "✅ Imported Animation page", Duration = 3 })
         else
             getgenv().Notify({ Title = "Error", Content = "Invalid Animation Page JSON", Duration = 3 })
         end
@@ -4193,7 +4024,7 @@ pcall(function()
 end)
 
 getgenv().Notify({
-    Title = '7yd7 | Emote',
+    Title = 'BIGHUB | Emote',
     Content = '⚠️ Script loading...',
     Duration = 5
 })
@@ -5643,7 +5474,7 @@ toggleFavorite = function(emoteId, emoteName)
     if found then
         table.remove(State.favoriteEmotes, index)
         getgenv().Notify({
-            Title = '7yd7 | Favorite System',
+            Title = 'BIGHUB | Favorite System',
             Content = '🗑️ Removed "' .. emoteName .. '" from favorites',
             Duration = 3
         })
@@ -5653,7 +5484,7 @@ toggleFavorite = function(emoteId, emoteName)
             name = emoteName .. " - ⭐"
         })
         getgenv().Notify({
-            Title = '7yd7 | Favorite System',
+            Title = 'BIGHUB | Favorite System',
             Content = '✅ Added "' .. emoteName .. '" to favorites',
             Duration = 3
         })
@@ -5685,7 +5516,7 @@ toggleFavoriteAnimation = function(animationData)
     if found then
         table.remove(State.favoriteAnimations, index)
         getgenv().Notify({
-            Title = '7yd7 | Favorite System',
+            Title = 'BIGHUB | Favorite System',
             Content = '🗑️ Removed "' .. animationData.name .. '" from favorites',
             Duration = 3
         })
@@ -5698,7 +5529,7 @@ toggleFavoriteAnimation = function(animationData)
             customSetName = IsCustomSetData(animationData) and (type(animationData.name) == "string" and animationData.name:gsub("%s*%-.*$", "") or animationData.name) or nil
         })
         getgenv().Notify({
-            Title = '7yd7 | Favorite System',
+            Title = 'BIGHUB | Favorite System',
             Content = '✅ Added "' .. animationData.name .. '" to favorites',
             Duration = 3
         })
@@ -5772,7 +5603,7 @@ applyAnimation = function(animationData)
     
     if not animate or not humanoid then
         getgenv().Notify({
-            Title = '7yd7 | Animation Error',
+            Title = 'BIGHUB | Animation Error',
             Content = '❌ Animate or Humanoid not found',
             Duration = 3
         })
@@ -5788,7 +5619,7 @@ applyAnimation = function(animationData)
     
         if not bundledItems and not animationData.isCustomSet then
         getgenv().Notify({
-            Title = '7yd7 | Animation Error', 
+            Title = 'BIGHUB | Animation Error', 
             Content = '??? No bundled items found',
             Duration = 3
         })
@@ -5917,7 +5748,7 @@ handleSectorAction = function(index)
         local itemData = pickRandomItemForMode()
         if not itemData then
             getgenv().Notify({
-                Title = '7yd7 | Random',
+                Title = 'BIGHUB | Random',
                 Content = '? No valid random item found',
                 Duration = 3
             })
@@ -5939,7 +5770,7 @@ handleSectorAction = function(index)
                 end
                 State.CustomAnimations.Sets[State.currentCustomAnimationName][cat][name] = animIdToSave
                 State.SaveCustomAnimations(State.CustomAnimations)
-                getgenv().Notify({ Title = "7yd7 | Saved", Content = "✅ Saved " .. name, Duration = 3 })
+                getgenv().Notify({ Title = "BIGHUB | Saved", Content = "✅ Saved " .. name, Duration = 3 })
                 if State.RefreshCustomAnimUI then State.RefreshCustomAnimUI() end
                 if refreshCustomAnimationState then refreshCustomAnimationState(true) end
                 State.exitCustomAnimationEditor()
@@ -6062,7 +5893,7 @@ handleSectorAction = function(index)
             end
             State.CustomAnimations.Sets[State.currentCustomAnimationName][cat][name] = animIdToSave
             State.SaveCustomAnimations(State.CustomAnimations)
-            getgenv().Notify({ Title = "7yd7 | Saved", Content = "✅ Saved " .. name, Duration = 3 })
+            getgenv().Notify({ Title = "BIGHUB | Saved", Content = "✅ Saved " .. name, Duration = 3 })
             
             if State.RefreshCustomAnimUI then State.RefreshCustomAnimUI() end
             if refreshCustomAnimationState then refreshCustomAnimationState(true) end
@@ -6276,7 +6107,7 @@ function fetchAllEmotes()
     updateEmotes()
     
     getgenv().Notify({
-        Title = '7yd7 | Emote',
+        Title = 'BIGHUB | Emote',
         Content = "🎉 Loaded Successfully! Total Emotes: " .. State.totalEmotesLoaded,
         Duration = 5
     })
@@ -6365,7 +6196,7 @@ end
 function searchEmotes(searchTerm)
     if State.isLoading then
         getgenv().Notify({
-            Title = '7yd7 | Emote',
+            Title = 'BIGHUB | Emote',
             Content = '⚠️ Loading please wait...',
             Duration = 5
         })
@@ -6433,7 +6264,7 @@ end
 function searchAnimations(searchTerm)
     if State.isLoading then
         getgenv().Notify({
-            Title = '7yd7 | Animation',
+            Title = 'BIGHUB | Animation',
             Content = '⚠️ Loading please wait...',
             Duration = 5
         })
@@ -6657,7 +6488,7 @@ function onCharacterAdded(character)
             character:WaitForChild("HumanoidRootPart")
             applyAnimation(getgenv().lastPlayedAnimation)
             getgenv().Notify({
-                Title = '7yd7 | Auto Reload Animation',
+                Title = 'BIGHUB | Auto Reload Animation',
                 Content = '🔄 The last animation was automatically \n reapplied',
                 Duration = 3
             })
@@ -6761,7 +6592,7 @@ function toggleEmoteWalk()
 
     if State.emotesWalkEnabled then
         getgenv().Notify({
-            Title = '7yd7 | Emote Freeze',
+            Title = 'BIGHUB | Emote Freeze',
             Content = "🔒 Emote freeze ON",
             Duration = 5
         })
@@ -6773,7 +6604,7 @@ function toggleEmoteWalk()
         end
     else
         getgenv().Notify({
-            Title = '7yd7 | Emote Freeze',
+            Title = 'BIGHUB | Emote Freeze',
             Content = '🔓 Emote freeze OFF',
             Duration = 5
         })
@@ -6795,7 +6626,7 @@ function toggleSpeedEmote()
 
     if State.speedEmoteEnabled then
         getgenv().Notify({
-            Title = '7yd7 | Speed Emote',
+            Title = 'BIGHUB | Speed Emote',
             Content = "⚡ Speed Emote ON",
             Duration = 5
         })
@@ -6803,7 +6634,7 @@ function toggleSpeedEmote()
         stopCurrentEmote()
     else
         getgenv().Notify({
-            Title = '7yd7 | Speed Emote',
+            Title = 'BIGHUB | Speed Emote',
             Content = '⚡ Speed Emote OFF',
             Duration = 5
         })
@@ -6822,7 +6653,7 @@ function toggleFavoriteMode()
     if State.favoriteEnabled then
         ApplyFavoriteButtonVisual()
         getgenv().Notify({
-            Title = '7yd7 | Favorite System',
+            Title = 'BIGHUB | Favorite System',
             Content = "🔒 Favorite ON",
             Duration = 5
         })
@@ -6838,7 +6669,7 @@ function toggleFavoriteMode()
     else
         ApplyFavoriteButtonVisual()
         getgenv().Notify({
-            Title = '7yd7 | Favorite System',
+            Title = 'BIGHUB | Favorite System',
             Content = '🔓 Favorite OFF',
             Duration = 3
         })
@@ -6892,13 +6723,13 @@ function toggleAutoReload()
     
     if getgenv().autoReloadEnabled then
         getgenv().Notify({
-            Title = '7yd7 | Auto Reload Animation',
+            Title = 'BIGHUB | Auto Reload Animation',
             Content = "🔄 Auto Reload ON",
             Duration = 5
         })
     else
         getgenv().Notify({
-            Title = '7yd7 | Auto Reload Animation',
+            Title = 'BIGHUB | Auto Reload Animation',
             Content = '🔄 Auto Reload OFF',
             Duration = 3
         })
@@ -7140,7 +6971,7 @@ function connectEvents()
                     end)
                     
                     getgenv().Notify({
-                        Title = '7yd7 | Animation',
+                        Title = 'BIGHUB | Animation',
                         Content = '📄 Changed to Emote > Animation Mode',
                         Duration = 3
                     })
@@ -7162,7 +6993,7 @@ function connectEvents()
                     end
                     
                     getgenv().Notify({
-                        Title = '7yd7 | Emote', 
+                        Title = 'BIGHUB | Emote', 
                         Content = '📄 Changed to Animation > Emote Mode',
                         Duration = 3
                     })
@@ -8046,7 +7877,7 @@ enterHUDEditor = function()
         rebuildHUDOverlays()
         pcall(function() updateGUIColors() end)
         getgenv().Notify({ 
-            Title = "7yd7 | HUD Editor", 
+            Title = "BIGHUB | HUD Editor", 
             Content = HUD.IsUnlocked and "🔓 Interior Unlocked! Children are now editable." or "🔒 Interior Locked! Top-level only.", 
             Duration = 2 
         })
@@ -8115,7 +7946,7 @@ enterHUDEditor = function()
             }
         }
         setclipboard(HttpService:JSONEncode(data))
-        getgenv().Notify({ Title = "7yd7 | HUD Editor", Content = "✅ HUD settings copied", Duration = 2 })
+        getgenv().Notify({ Title = "BIGHUB | HUD Editor", Content = "✅ HUD settings copied", Duration = 2 })
     end))
 
     table.insert(HUD.Connections, importBtn.MouseButton1Click:Connect(function()
@@ -8185,7 +8016,7 @@ enterHUDEditor = function()
                 HUD.UndoStack = {}
                 if backdrop then backdrop:Destroy() end
                 popup:Destroy()
-                getgenv().Notify({ Title = "7yd7 | HUD Editor", Content = "✅ HUD settings imported", Duration = 2 })
+                getgenv().Notify({ Title = "BIGHUB | HUD Editor", Content = "✅ HUD settings imported", Duration = 2 })
             else
                 getgenv().Notify({ Title = "Error", Content = "Invalid HUD JSON", Duration = 3 })
             end
@@ -8302,7 +8133,7 @@ enterHUDEditor = function()
         end
         updatePageDisplay()
         
-        getgenv().Notify({ Title = "7yd7 | HUD Editor", Content = "🔄 All designs and frames have been fully reset", Duration = 3 })
+        getgenv().Notify({ Title = "BIGHUB | HUD Editor", Content = "🔄 All designs and frames have been fully reset", Duration = 3 })
     end))
 
     local propertiesPanel = Instance.new("Frame")
@@ -8596,7 +8427,7 @@ enterHUDEditor = function()
         updateHUDLayouts()
         ApplyUIVisibility()
         pcall(function() updateGUIColors() end)
-        getgenv().Notify({ Title = "7yd7 | HUD Editor", Content = "🗑️ Custom Frame deleted", Duration = 2 })
+        getgenv().Notify({ Title = "BIGHUB | HUD Editor", Content = "🗑️ Custom Frame deleted", Duration = 2 })
     end))
 
 
@@ -8893,10 +8724,10 @@ enterHUDEditor = function()
         setupElementDragging(newName, cf, getMovableElements(), snapGuideV, snapGuideH)
         selectHUDElement(newName, cf)
         
-        getgenv().Notify({ Title = "7yd7 | HUD Editor", Content = "➕ Custom Frame added!", Duration = 2 })
+        getgenv().Notify({ Title = "BIGHUB | HUD Editor", Content = "➕ Custom Frame added!", Duration = 2 })
     end))
 
-    getgenv().Notify({ Title = "7yd7 | HUD Editor", Content = "✏️ Drag elements to reposition", Duration = 5 })
+    getgenv().Notify({ Title = "BIGHUB | HUD Editor", Content = "✏️ Drag elements to reposition", Duration = 5 })
 end
 
 State.RefreshUI = function()
@@ -9027,7 +8858,7 @@ end)
 if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
     SafeLoad("https://raw.githubusercontent.com/7yd7/Hub/refs/heads/Branch/GUIS/OpenEmote.lua", "Open Emote")
     getgenv().Notify({
-        Title = '7yd7 | Emote Mobile',
+        Title = 'BIGHUB | Emote Mobile',
         Content = '📱 Added emote open button for ease of use',
         Duration = 10
     })
@@ -9035,7 +8866,7 @@ end
 
 if UserInputService.KeyboardEnabled then
     getgenv().Notify({
-        Title = '7yd7 | Emote PC',
+        Title = 'BIGHUB | Emote PC',
         Content = '💻 Open menu press button "."',
         Duration = 10
     })
