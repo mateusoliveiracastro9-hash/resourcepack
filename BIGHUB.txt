@@ -90,7 +90,6 @@ local T = {
         farm_key    = "Tecla do Auto Farm",
         mm2_grab_gun= "Pegar Arma",
         mm2_kill_murderer = "Kill Muder",
-        god_mode    = "Modo Deus (Imortal)",
         sec_ui      = "Interface",
         toggle_key  = "Tecla para abrir/fechar",
         accent_col  = "Cor de destaque",
@@ -155,7 +154,6 @@ local T = {
         farm_key    = "Auto Farm Key",
         mm2_grab_gun= "Grab Gun",
         mm2_kill_murderer = "Kill Murderer",
-        god_mode    = "God Mode (Immortal)",
         sec_ui      = "Interface",
         toggle_key  = "Toggle menu key",
         accent_col  = "Accent color",
@@ -192,8 +190,6 @@ local Cfg = {
     AimPart = "Head", AimFOV = 160, AimSmooth = 55, AimDist = 1000, AimShowFOV = true, AimKey = nil,
 
     MM2Farm = false, FarmKey = nil,
-    GodMode = false,
-
     ToggleKey = Enum.KeyCode.K,
 }
 
@@ -1013,40 +1009,6 @@ local function StartMM2Farm()
         StopFarm()
     end)
 end
-
---------------------------------------------------------------------
--- GOD MODE (IMORTALIDADE CONTRA MUDER E XERIFE)
---------------------------------------------------------------------
-local GodModeConn = nil
-local function StartGodMode()
-    if GodModeConn then GodModeConn:Disconnect() end
-    GodModeConn = RunService.Heartbeat:Connect(function()
-        if not Cfg.GodMode then return end
-        local _, hum = getChar()
-        if hum then
-            if hum.Health < hum.MaxHealth and hum.Health > 0 then
-                hum.Health = hum.MaxHealth
-            end
-            pcall(function()
-                hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
-            end)
-        end
-    end)
-end
-
-local function StopGodMode()
-    if GodModeConn then
-        GodModeConn:Disconnect()
-        GodModeConn = nil
-    end
-    local _, hum = getChar()
-    if hum then
-        pcall(function()
-            hum:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
-        end)
-    end
-end
-
 --------------------------------------------------------------------
 -- FUNÇÃO PEGAR ARMA (MM2) COM RETORNO DE POSIÇÃO
 --------------------------------------------------------------------
@@ -1318,11 +1280,6 @@ do
         if v then StartMM2Farm() else StopFarm() end
     end)
     Keybind(p, "farm_key", function() return Cfg.FarmKey end, function(kc) Cfg.FarmKey = kc end)
-
-    Toggle(p, "god_mode", nil, false, function(v)
-        Cfg.GodMode = v
-        if v then StartGodMode() else StopGodMode() end
-    end)
     
     Button(p, "mm2_grab_gun", nil, function()
         GrabGunAction()
@@ -1587,7 +1544,6 @@ for _, pl in ipairs(Players:GetPlayers()) do createESP(pl) end
 refreshPlayers()
 
 Unload = function()
-    Cfg.Fly = false; Cfg.Aim = false; Cfg.MM2Farm = false; Cfg.GodMode = false
     StopFling()
     StopFarm()
     StopGodMode()
